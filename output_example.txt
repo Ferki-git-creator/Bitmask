@@ -1,0 +1,6 @@
+denis@dev:~/T/src$ ./example
+Bit 0 is set
+Number of set bits: 15
+Set bits in flags: 0 3 8 9 10 11 12 13 14 15 16 17 19 21 23
+First set bit at position: 0
+denis@dev:~/T/src$
