@@ -10,7 +10,6 @@ int main(void)
 {
     uint64_t flags = 0;
     bitmask64_t perm_mask;
-    uint8_t bit_idx;
     
     /* Initialize bitmask structure */
     bitmask64_init(&perm_mask);
@@ -29,6 +28,7 @@ int main(void)
     /* Range operations */
     bits_set_range(&flags, 8, 15);
     uint64_t extracted = bits_get_range(flags, 8, 15);
+    printf("Extracted range [8..15]: 0x%llX\n", (unsigned long long)extracted);
     bits_write_range(&flags, 16, 23, 0xAB);
     
     /* Count set bits */
@@ -51,6 +51,10 @@ int main(void)
     uint64_t merged = bitmask_merge(mask_a, mask_b);
     uint64_t common = bitmask_intersect(mask_a, mask_b);
     bool is_sub = bitmask_is_subset(0x03, mask_a);
+    printf("Merged: 0x%llX, Common: 0x%llX, Is subset: %s\n",
+           (unsigned long long)merged,
+           (unsigned long long)common,
+           is_sub ? "true" : "false");
     
     /* Find first set bit */
     uint8_t first_bit = bit_scan_forward(flags);
