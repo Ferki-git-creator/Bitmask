@@ -40,19 +40,20 @@
 #define BITMASK64_ALL ((uint64_t)0xFFFFFFFFFFFFFFFF)
 #define BITMASK32_ALL ((uint32_t)0xFFFFFFFF)
 
-#define MASK_FROM_TO(start, end) \
-    ((((uint64_t)1 << ((end) - (start) + 1)) - 1) << (start))
+#define MASK_FROM_TO(start, end) (bitmask_make_mask((start), (end)))
+
+#define BITMASK_INVALID_INDEX ((uint8_t)64)
 
 /* ============================================================================
  * TYPE DEFINITIONS
  * ============================================================================ */
 
-typedef struct BITMASK_PACKED
+typedef struct
 {
     uint64_t bits;
 } bitmask64_t;
 
-typedef struct BITMASK_PACKED
+typedef struct
 {
     uint32_t bits;
 } bitmask32_t;
@@ -88,6 +89,9 @@ BITMASK_FORCE_INLINE void bitmask64_init(bitmask64_t* mask);
 BITMASK_FORCE_INLINE void bitmask64_set(bitmask64_t* mask, uint8_t bit);
 BITMASK_FORCE_INLINE bool bitmask64_check(bitmask64_t mask, uint8_t bit);
 
+/* Utility helpers */
+BITMASK_FORCE_INLINE uint64_t bitmask_make_mask(uint8_t start, uint8_t end);
+
 /* ============================================================================
  * MACROS FOR ITERATION
  * ============================================================================ */
@@ -118,22 +122,60 @@ BITMASK_FORCE_INLINE bool bitmask64_check(bitmask64_t mask, uint8_t bit);
 
 BITMASK_FORCE_INLINE void bit_set(volatile uint64_t* mask, uint8_t bit)
 {
-    *mask |= BIT(bit);
+    if (bit < 64)
+    {
+        *mask |= BIT(bit);
+    }
 }
 
 BITMASK_FORCE_INLINE void bit_clear(volatile uint64_t* mask, uint8_t bit)
 {
-    *mask &= ~BIT(bit);
+    if (bit < 64)
+    {
+        *mask &= ~BIT(bit);
+    }
 }
 
 BITMASK_FORCE_INLINE void bit_toggle(volatile uint64_t* mask, uint8_t bit)
 {
-    *mask ^= BIT(bit);
+    if (bit < 64)
+    {
+        *mask ^= BIT(bit);
+    }
 }
 
 BITMASK_FORCE_INLINE bool bit_check(uint64_t mask, uint8_t bit)
 {
+    if (bit >= 64)
+    {
+        return false;
+    }
+
     return (mask >> bit) & 1;
+}
+
+BITMASK_FORCE_INLINE uint64_t bitmask_make_mask(uint8_t start, uint8_t end)
+{
+    uint8_t width;
+
+    if ((start > end) || (start >= 64))
+    {
+        return 0;
+    }
+
+    if (end >= 63)
+    {
+        end = 63;
+    }
+
+    width = (uint8_t)(end - start + 1);
+
+    if (width == 64)
+    {
+        return BITMASK64_ALL;
+    }
+
+    return ((UINT64_C(1) << width) - 1) << start;
 }
 
 /* ----------------------------------------------------------------------------
@@ -143,19 +185,19 @@ BITMASK_FORCE_INLINE bool bit_check(uint64_t mask, uint8_t bit)
 BITMASK_FORCE_INLINE void bits_set_range(volatile uint64_t* mask, 
                                          uint8_t start, uint8_t end)
 {
-    *mask |= MASK_FROM_TO(start, end);
+    *mask |= bitmask_make_mask(start, end);
 }
 
 BITMASK_FORCE_INLINE void bits_clear_range(volatile uint64_t* mask, 
                                            uint8_t start, uint8_t end)
 {
-    *mask &= ~MASK_FROM_TO(start, end);
+    *mask &= ~bitmask_make_mask(start, end);
 }
 
 BITMASK_FORCE_INLINE uint64_t bits_get_range(uint64_t mask, 
                                              uint8_t start, uint8_t end)
 {
-    uint64_t range_mask = MASK_FROM_TO(start, end);
+    uint64_t range_mask = bitmask_make_mask(start, end);
     return (mask & range_mask) >> start;
 }
 
@@ -163,8 +205,9 @@ BITMASK_FORCE_INLINE void bits_write_range(volatile uint64_t* mask,
                                            uint8_t start, uint8_t end, 
                                            uint64_t value)
 {
-    uint64_t clear_mask = ~MASK_FROM_TO(start, end);
-    uint64_t write_mask = (value << start) & MASK_FROM_TO(start, end);
+    uint64_t range_mask = bitmask_make_mask(start, end);
+    uint64_t clear_mask = ~range_mask;
+    uint64_t write_mask = (value << start) & range_mask;
     *mask = (*mask & clear_mask) | write_mask;
 }
 
